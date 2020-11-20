@@ -1,7 +1,7 @@
 #-- my_code_hw01.py
 #-- hw01 GEO1015.2020
-#-- [YOUR NAME]
-#-- [YOUR STUDENT NUMBER] 
+#-- Michiel de Jong
+#-- 4376978
 #-- [YOUR NAME]
 #-- [YOUR STUDENT NUMBER] 
 
@@ -35,8 +35,20 @@ def nn_interpolation(list_pts_3d, j_nn):
     # https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.KDTree.query.html#scipy.spatial.KDTree.query
     # kd = scipy.spatial.KDTree(list_pts)
     # d, i = kd.query(p, k=1)
-
+    cellsize = j_nn['cellsize']
+    x = []
+    y = []
+    z = []
+    sample_size = 0
+    for point in list_pts_3d:
+        x.append(point[0])
+        y.append(point[1])
+        z.append(point[2])
+        sample_size += 1
     print("File written to", j_nn['output-file'])
+    print(z)
+    print(sample_size)
+    print(cellsize)
 
 
 
