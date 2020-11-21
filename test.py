@@ -8,6 +8,7 @@ import csv
 import random
 import json 
 import time
+import copy 
 
 def main():
     #-- read the needed parameters from the file 'params.json' (must be in same folder)
@@ -27,10 +28,7 @@ def main():
             list_pts_3d.append(p)
     gridsize= jparams['nn']['cellsize']
     print(list_pts_3d[926])
-
-    list_pts = list_pts_3d
-    for pt in list_pts:
-        pt.pop(2)
+    list_pts = copy.copy(list_pts_3d)
     x = []
     y = []
     z = []
@@ -38,8 +36,10 @@ def main():
     for point in list_pts_3d:
         x.append(point[0])
         y.append(point[1])
-        #z.append(point[2])
+        z.append(point[2])
         sample_size += 1 
+    for pt in list_pts:
+        pt.pop(2)
     kd = scipy.spatial.KDTree(list_pts)
     ncols = int(max(x)/gridsize)
     nrows = int(max(y)/gridsize)
@@ -55,7 +55,7 @@ def main():
     d, i = kd.query(query_point, k=1)
     print(d, i)
     print(list_pts_3d[926])
-
+    print(z[926])
     """
     # data coordinates and values
 
