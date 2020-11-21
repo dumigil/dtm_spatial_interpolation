@@ -26,10 +26,11 @@ def main():
             assert(len(p) == 3)
             list_pts_3d.append(p)
     gridsize= jparams['nn']['cellsize']
+    print(list_pts_3d[926])
+
     list_pts = list_pts_3d
     for pt in list_pts:
         pt.pop(2)
-    print(list_pts)
     x = []
     y = []
     z = []
@@ -45,7 +46,6 @@ def main():
     x_range = np.arange(min(x), ncols, gridsize)
     y_range = np.arange(min(y), nrows, gridsize)
     xx, yy = np.meshgrid(x_range, y_range)
-    print(yy)
     plt.plot(xx,yy, marker='.', color='k', linestyle='none')
     #plt.show()
     print(xx[0][0])
@@ -54,6 +54,7 @@ def main():
     print(query_point)
     d, i = kd.query(query_point, k=1)
     print(d, i)
+    print(list_pts_3d[926])
 
     """
     # data coordinates and values
