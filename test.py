@@ -26,7 +26,10 @@ def main():
             assert(len(p) == 3)
             list_pts_3d.append(p)
     gridsize= jparams['nn']['cellsize']
-    print(gridsize)
+    list_pts = list_pts_3d
+    for pt in list_pts:
+        pt.pop(2)
+    print(list_pts)
     x = []
     y = []
     z = []
@@ -34,11 +37,24 @@ def main():
     for point in list_pts_3d:
         x.append(point[0])
         y.append(point[1])
-        z.append(point[2])
+        #z.append(point[2])
         sample_size += 1 
-    kd = scipy.spatial.KDTree(list_pts_3d)
-    d, i = kd.query([1,20,75], k=1)
+    kd = scipy.spatial.KDTree(list_pts)
+    ncols = int(max(x)/gridsize)
+    nrows = int(max(y)/gridsize)
+    x_range = np.arange(min(x), ncols, gridsize)
+    y_range = np.arange(min(y), nrows, gridsize)
+    xx, yy = np.meshgrid(x_range, y_range)
+    print(yy)
+    plt.plot(xx,yy, marker='.', color='k', linestyle='none')
+    #plt.show()
+    print(xx[0][0])
+    print(yy[0][0])
+    query_point = [xx[0][0],yy[0][0]]
+    print(query_point)
+    d, i = kd.query(query_point, k=1)
     print(d, i)
+
     """
     # data coordinates and values
 
