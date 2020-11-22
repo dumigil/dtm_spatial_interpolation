@@ -54,8 +54,8 @@ def main():
     print(query_point)
     d, i = kd.query(query_point, k=1)
     print(d, i)
-    print(list_pts_3d[926])
-    print(z[926])
+    print(list_pts_3d[i])
+    print(z[i])
     """
     # data coordinates and values
 
