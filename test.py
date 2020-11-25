@@ -1,6 +1,4 @@
-import matplotlib.pyplot as plt
 import numpy as np
-from scipy.interpolate import griddata
 import scipy.spatial
 import sys
 import math
@@ -9,6 +7,8 @@ import random
 import json 
 import time
 import copy 
+
+
 
 def main():
     #-- read the needed parameters from the file 'params.json' (must be in same folder)
@@ -20,14 +20,13 @@ def main():
     #-- store the input 3D points in list
     list_pts_3d = []
     with open(jparams['input-file']) as csvfile:
-        r = csv.reader(csvfile, delimiter=' ')
+        r = csv.reader(csvfile, delimiter=',')
         header = next(r)
         for line in r:
             p = list(map(float, line)) #-- convert each str to a float
             assert(len(p) == 3)
             list_pts_3d.append(p)
     gridsize= jparams['nn']['cellsize']
-    print(list_pts_3d[926])
     list_pts = copy.copy(list_pts_3d)
     x = []
     y = []
@@ -41,47 +40,26 @@ def main():
     for pt in list_pts:
         pt.pop(2)
     kd = scipy.spatial.KDTree(list_pts)
-    ncols = int(max(x)/gridsize)
-    nrows = int(max(y)/gridsize)
-    x_range = np.arange(min(x), ncols, gridsize)
-    y_range = np.arange(min(y), nrows, gridsize)
-    xx, yy = np.meshgrid(x_range, y_range)
-    plt.plot(xx,yy, marker='.', color='k', linestyle='none')
-    #plt.show()
-    print(xx[0][0])
-    print(yy[0][0])
-    query_point = [xx[0][0],yy[0][0]]
-    print(query_point)
-    d, i = kd.query(query_point, k=1)
-    print(d, i)
-    print(list_pts_3d[i])
-    print(z[i])
-    """
-    # data coordinates and values
-
-    # target grid to interpolate to
-    xi = yi = np.arange(min(x),max(y)+2,10)
-    xi,yi = np.meshgrid(xi,yi)
-
-    # set mask
-    #mask = (xi > 0.5) & (xi < 0.6) & (yi > 0.5) & (yi < 0.6)
-
-    # interpolate
-    zi = griddata((x,y),z,(xi,yi),method='nearest')
-
-    # mask out the field
-    #zi[mask] = np.nan
-
-    # plot
-    fig = plt.figure(figsize=(10,10))
-    ax = fig.add_subplot(111)
-    plt.contourf(xi,yi,zi,np.arange(min(z),max(z),1))
-    #plt.plot(x,y,'k.')
-    plt.xlabel('xi',fontsize=16)
-    plt.ylabel('yi',fontsize=16)
-    #plt.savefig('interpolated.png',dpi=100)
-    plt.show()
-    """
+    ncols = math.ceil((max(x)-min(x)+(0.5 * gridsize))/gridsize)
+    nrows = math.ceil((max(y)-min(y)+(0.5* gridsize))/gridsize)
+    print(sample_size)
+    yrange = reversed(range((int(min(y))),(int(max(y))+(gridsize)),gridsize))
+    xrange = (range(int(min(x)),int(max(x)+(gridsize)),gridsize))
+    coordinates = [[i, j] for j in yrange for i in xrange]
+    print(coordinates)
+    for i in coordinates:
+        d, i_nn = kd.query(i,k=1)
+        i.append(z[i_nn])
+    print(coordinates)
+    with open('tas_square_test.asc', 'w') as fh:
+        fh.writelines('NCOLS {}\n'.format(ncols))
+        fh.writelines('NROWS {}\n'.format(nrows))
+        fh.writelines('XLLCENTER {}\n'.format(min(x)))
+        fh.writelines('YLLCENTER {}\n'.format(min(y)))
+        fh.writelines('CELLSIZE {}\n'.format(jparams['nn']['cellsize']))
+        fh.writelines('NO_DATA VALUE {}\n'.format(-9999))
+        for i in coordinates:
+            fh.write(str(i[-1])+' ')
 
 if __name__ == '__main__':
     main()
