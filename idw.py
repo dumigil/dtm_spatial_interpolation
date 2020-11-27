@@ -26,7 +26,9 @@ def main():
             p = list(map(float, line)) #-- convert each str to a float
             assert(len(p) == 3)
             list_pts_3d.append(p)
-    gridsize= jparams['nn']['cellsize']
+    gridsize= int(jparams['idw']['cellsize'])
+    radius = jparams['idw']['radius']
+    power = jparams['idw']['power']
     list_pts = copy.copy(list_pts_3d)
     x = []
     y = []
@@ -53,10 +55,22 @@ def main():
             i.append(-9999)
         else:
             d, i_nn = kd.query(i,k=1)
-            i.append(z[i_nn])
+            i_idw = kd.query_ball_point(i, radius)
+            weight_sum = 0
+            z_sum = 0
+            for idx in i_idw:
+                distance = math.sqrt(((x[idx]-i[0])**2)+((y[idx]-i[1])**2))
+                if distance != 0:
+                    weight = 1/(distance ** power)
+                    z_val = z[idx] * weight
+                    weight_sum += weight
+                    z_sum += z_val
+            i.append((z_sum/weight_sum))
+            
+            #i.append(z[i_nn])
     row_num = 0
     col_num = 0
-    with open('tas_test.asc', 'w') as fh:
+    with open('swiss_test.asc', 'w') as fh:
         fh.writelines('NCOLS {}\n'.format(ncols))
         fh.writelines('NROWS {}\n'.format(nrows))
         fh.writelines('XLLCENTER {}\n'.format(min(x)))

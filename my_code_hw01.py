@@ -11,6 +11,7 @@ import math
 import numpy
 import scipy.spatial
 import startin 
+import copy
 #-----
 
 
@@ -35,20 +36,68 @@ def nn_interpolation(list_pts_3d, j_nn):
     # https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.KDTree.query.html#scipy.spatial.KDTree.query
     # kd = scipy.spatial.KDTree(list_pts)
     # d, i = kd.query(p, k=1)
-    cellsize = j_nn['cellsize']
+    gridsize= int(j_nn['cellsize'])
+    
+    #copy 3d list before splitting it
+    list_pts = copy.deepcopy(list_pts_3d)
     x = []
     y = []
     z = []
-    sample_size = 0
+    
+    #splitting the list in xyz
     for point in list_pts_3d:
         x.append(point[0])
         y.append(point[1])
         z.append(point[2])
-        sample_size += 1
+    #removing z coordinates
+    for pt in list_pts:
+        pt.pop(2)
+    
+    #adding xy points to KD tree
+    kd = scipy.spatial.KDTree(list_pts)
+    
+    #creating convex hull
+    convex_hull = scipy.spatial.Delaunay(list_pts)
+    
+    #defining the number of rows and columns, taking into account that the grid is based on the centerpoints.
+    ncols = math.ceil((max(x)-min(x)+(0.5 * gridsize))/gridsize)
+    nrows = math.ceil((max(y)-min(y)+(0.5* gridsize))/gridsize)
+
+    #defining the range for the grid, reversing the y axis because the grid has to be initialised bottom left 
+    yrange = reversed(range((int(min(y))),(int(max(y))+(gridsize)),gridsize))
+    xrange = (range(int(min(x)),int(max(x)+(gridsize)),gridsize))
+    
+    #creating the grid array
+    coordinates = [[i, j] for j in yrange for i in xrange]
+
+    #interpolation actually happens here, first checking if point is inside convex hull, otherwise it will be no_data
+    for i in coordinates:
+        if convex_hull.find_simplex(i) == -1:
+            i.append(-9999)
+        else:
+            d, i_nn = kd.query(i,k=1)
+            i.append(z[i_nn])
+    
+    row_num = 0
+    col_num = 0
+
+    #writing file
+    with open(j_nn['output-file'], 'w') as fh:
+        fh.writelines('NCOLS {}\n'.format(ncols))
+        fh.writelines('NROWS {}\n'.format(nrows))
+        fh.writelines('XLLCENTER {}\n'.format(min(x)))
+        fh.writelines('YLLCENTER {}\n'.format(min(y)))
+        fh.writelines('CELLSIZE {}\n'.format(j_nn['cellsize']))
+        fh.writelines('NODATA_VALUE {}\n'.format(-9999))
+        for i in coordinates:
+            fh.write(str(i[-1])+' ')
+            col_num += 1
+            if col_num  == ncols:
+                col_num = 0
+                row_num+= 1
+                fh.write('\n')
     print("File written to", j_nn['output-file'])
-    print(z)
-    print(sample_size)
-    print(cellsize)
+
 
 
 
@@ -74,6 +123,69 @@ def idw_interpolation(list_pts_3d, j_idw):
     # kd = scipy.spatial.KDTree(list_pts)
     # i = kd.query_ball_point(p, radius)
     
+    #pulling parameters from json
+    gridsize= int(j_idw['cellsize'])
+    radius = j_idw['radius']
+    power = j_idw['power']
+
+    #copy 3d list before splitting it
+    list_pts = copy.deepcopy(list_pts_3d)
+    x = []
+    y = []
+    z = []
+
+    #splitting list
+    for point in list_pts_3d:
+        x.append(point[0])
+        y.append(point[1])
+        z.append(point[2])
+    #removing z values
+    for pt in list_pts:
+        pt.pop(2)
+    #storing xy vals in kdtree
+    kd = scipy.spatial.KDTree(list_pts)
+    convex_hull = scipy.spatial.Delaunay(list_pts)
+    
+    #determining grid size based on 
+    ncols = math.ceil((max(x)-min(x)+(0.5 * gridsize))/gridsize)
+    nrows = math.ceil((max(y)-min(y)+(0.5* gridsize))/gridsize)
+    
+    yrange = reversed(range((int(min(y))),(int(max(y))+(gridsize)),gridsize))
+    xrange = (range(int(min(x)),int(max(x)+(gridsize)),gridsize))
+    coordinates = [[i, j] for j in yrange for i in xrange]
+    for i in coordinates:
+        if convex_hull.find_simplex(i) == -1:
+            i.append(-9999)
+        else:
+            d, i_nn = kd.query(i,k=1)
+            i_idw = kd.query_ball_point(i, radius)
+            weight_sum = 0
+            z_sum = 0
+            for idx in i_idw:
+                distance = math.sqrt(((x[idx]-i[0])**2)+((y[idx]-i[1])**2))
+                if distance != 0:
+                    weight = 1/(distance ** power)
+                    z_val = z[idx] * weight
+                    weight_sum += weight
+                    z_sum += z_val
+            i.append((z_sum/weight_sum))
+            
+    row_num = 0
+    col_num = 0
+    with open(j_idw['output-file'], 'w') as fh:
+        fh.writelines('NCOLS {}\n'.format(ncols))
+        fh.writelines('NROWS {}\n'.format(nrows))
+        fh.writelines('XLLCENTER {}\n'.format(min(x)))
+        fh.writelines('YLLCENTER {}\n'.format(min(y)))
+        fh.writelines('CELLSIZE {}\n'.format(jparams['nn']['cellsize']))
+        fh.writelines('NODATA_VALUE {}\n'.format(-9999))
+        for i in coordinates:
+            fh.write(str(i[-1])+' ')
+            col_num += 1
+            if col_num  == ncols:
+                col_num = 0
+                row_num+= 1
+                fh.write('\n')
     print("File written to", j_idw['output-file'])
 
 
