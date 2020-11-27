@@ -20,7 +20,7 @@ def main():
     #-- store the input 3D points in list
     list_pts_3d = []
     with open(jparams['input-file']) as csvfile:
-        r = csv.reader(csvfile, delimiter=',')
+        r = csv.reader(csvfile, delimiter=' ')
         header = next(r)
         for line in r:
             p = list(map(float, line)) #-- convert each str to a float
@@ -40,24 +40,27 @@ def main():
     for pt in list_pts:
         pt.pop(2)
     kd = scipy.spatial.KDTree(list_pts)
+    convex_hull = scipy.spatial.Delaunay(list_pts)
+    print(convex_hull.find_simplex)
     ncols = math.ceil((max(x)-min(x)+(0.5 * gridsize))/gridsize)
     nrows = math.ceil((max(y)-min(y)+(0.5* gridsize))/gridsize)
     print(sample_size)
     yrange = reversed(range((int(min(y))),(int(max(y))+(gridsize)),gridsize))
     xrange = (range(int(min(x)),int(max(x)+(gridsize)),gridsize))
     coordinates = [[i, j] for j in yrange for i in xrange]
-    print(coordinates)
     for i in coordinates:
-        d, i_nn = kd.query(i,k=1)
-        i.append(z[i_nn])
-    print(coordinates)
-    with open('tas_square_test.asc', 'w') as fh:
+        if convex_hull.find_simplex(i) == -1:
+            i.append(-9999)
+        else:
+            d, i_nn = kd.query(i,k=1)
+            i.append(z[i_nn])
+    with open('test.asc', 'w') as fh:
         fh.writelines('NCOLS {}\n'.format(ncols))
         fh.writelines('NROWS {}\n'.format(nrows))
         fh.writelines('XLLCENTER {}\n'.format(min(x)))
         fh.writelines('YLLCENTER {}\n'.format(min(y)))
         fh.writelines('CELLSIZE {}\n'.format(jparams['nn']['cellsize']))
-        fh.writelines('NO_DATA VALUE {}\n'.format(-9999))
+        fh.writelines('NODATA_VALUE {}\n'.format(-9999))
         for i in coordinates:
             fh.write(str(i[-1])+' ')
 

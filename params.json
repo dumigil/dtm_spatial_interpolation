@@ -1,8 +1,8 @@
 {
-  "input-file": "tas_square.csv",
+  "input-file": "samples.xyz",
   "nn": {
     "output-file": "nn.asc",
-    "cellsize": 100
+    "cellsize": 1
   },
   "idw": {
     "output-file": "idw.asc",
