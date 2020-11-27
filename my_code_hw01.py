@@ -13,7 +13,11 @@ import scipy.spatial
 import startin 
 import copy
 #-----
-
+def xy_distance(point1, point2):
+        dx = point1[0] - point2[0]
+        dy = point1[1] - point2[1]
+        distance = math.sqrt(dx **2 + dy **2)
+        return distance
 
 
 def nn_interpolation(list_pts_3d, j_nn):
@@ -60,12 +64,12 @@ def nn_interpolation(list_pts_3d, j_nn):
     convex_hull = scipy.spatial.Delaunay(list_pts)
     
     #defining the number of rows and columns, taking into account that the grid is based on the centerpoints.
-    ncols = math.ceil((max(x)-min(x)+(0.5 * gridsize))/gridsize)
-    nrows = math.ceil((max(y)-min(y)+(0.5* gridsize))/gridsize)
+    ncols = math.ceil((max(x)-min(x))/gridsize)
+    nrows = math.ceil((max(y)-min(y))/gridsize)
 
     #defining the range for the grid, reversing the y axis because the grid has to be initialised bottom left 
-    yrange = reversed(range((int(min(y))),(int(max(y))+(gridsize)),gridsize))
-    xrange = (range(int(min(x)),int(max(x)+(gridsize)),gridsize))
+    yrange = reversed(numpy.arange(min(y) + 0.5 * gridsize, max(y) + 0.5 * gridsize, gridsize))
+    xrange = numpy.arange(min(x) + 0.5 * gridsize, max(x) + 0.5 * gridsize, gridsize)
     
     #creating the grid array
     coordinates = [[i, j] for j in yrange for i in xrange]
@@ -147,11 +151,12 @@ def idw_interpolation(list_pts_3d, j_idw):
     convex_hull = scipy.spatial.Delaunay(list_pts)
     
     #determining grid size based on 
-    ncols = math.ceil((max(x)-min(x)+(0.5 * gridsize))/gridsize)
-    nrows = math.ceil((max(y)-min(y)+(0.5* gridsize))/gridsize)
+    ncols = math.ceil((max(x)-min(x))/gridsize)
+    nrows = math.ceil((max(y)-min(y))/gridsize)
     
-    yrange = reversed(range((int(min(y))),(int(max(y))+(gridsize)),gridsize))
-    xrange = (range(int(min(x)),int(max(x)+(gridsize)),gridsize))
+    yrange = reversed(numpy.arange(min(y) + 0.5 * gridsize, max(y) + 0.5 * gridsize, gridsize))
+    xrange = numpy.arange(min(x) + 0.5 * gridsize, max(x) + 0.5 * gridsize, gridsize)
+    
     coordinates = [[i, j] for j in yrange for i in xrange]
     for i in coordinates:
         if convex_hull.find_simplex(i) == -1:
@@ -177,7 +182,7 @@ def idw_interpolation(list_pts_3d, j_idw):
         fh.writelines('NROWS {}\n'.format(nrows))
         fh.writelines('XLLCENTER {}\n'.format(min(x)))
         fh.writelines('YLLCENTER {}\n'.format(min(y)))
-        fh.writelines('CELLSIZE {}\n'.format(jparams['nn']['cellsize']))
+        fh.writelines('CELLSIZE {}\n'.format(j_idw['cellsize']))
         fh.writelines('NODATA_VALUE {}\n'.format(-9999))
         for i in coordinates:
             fh.write(str(i[-1])+' ')
@@ -213,6 +218,65 @@ def tin_interpolation(list_pts_3d, j_tin):
     # you need to write your own code for this step
     # but you can of course read the code [dt.interpolate_tin_linear(x, y)]
     
+    gridsize= int(j_tin['cellsize'])
+    list_pts = copy.deepcopy(list_pts_3d)
+    x = []
+    y = []
+    z = []
+    for point in list_pts_3d:
+        x.append(point[0])
+        y.append(point[1])
+        z.append(point[2])
+    for pt in list_pts:
+        pt.pop(2)
+    
+    convex_hull = scipy.spatial.Delaunay(list_pts)
+    
+    ncols = math.ceil((max(x)-min(x))/gridsize)
+    nrows = math.ceil((max(y)-min(y))/gridsize)
+    
+    yrange = reversed(numpy.arange(min(y) + 0.5 * gridsize, max(y) + 0.5 * gridsize, gridsize))
+    xrange = numpy.arange(min(x) + 0.5 * gridsize, max(x) + 0.5 * gridsize, gridsize)
+    
+    coordinates = [[i, j] for j in yrange for i in xrange]
+    
+    for i in coordinates:
+        if convex_hull.find_simplex(i) == -1:
+            i.append(-9999)
+        else:
+            v1, v2, v3 = convex_hull.simplices[convex_hull.find_simplex(i)]
+            p1 = list_pts[v1]
+            p2 = list_pts[v2]
+            p3 = list_pts[v3]
+            if xy_distance(i, p1) == 0:
+                i.append(z[v1])
+            elif xy_distance(i, p2) == 0:
+                i.append(z[v2])
+            elif xy_distance(i, p3) == 0:
+                i.append(z[v3])
+            else:
+                weight_1 = 1/xy_distance(i, p1)
+                weight_2 = 1/xy_distance(i, p2)
+                weight_3 = 1/xy_distance(i, p3)
+                i.append(((weight_1 * z[v1]) + (weight_2 * z[v2]) + (weight_3 * z[v3])) / (weight_1 + weight_2 + weight_3))
+
+    row_num = 0
+    col_num = 0
+    with open(j_tin['output-file'], 'w') as fh:
+        fh.writelines('NCOLS {}\n'.format(ncols))
+        fh.writelines('NROWS {}\n'.format(nrows))
+        fh.writelines('XLLCENTER {}\n'.format(min(x)))
+        fh.writelines('YLLCENTER {}\n'.format(min(y)))
+        fh.writelines('CELLSIZE {}\n'.format(j_tin['cellsize']))
+        fh.writelines('NODATA_VALUE {}\n'.format(-9999))
+        for i in coordinates:
+            fh.write(str(i[-1])+' ')
+            col_num += 1
+            if col_num  == ncols:
+                col_num = 0
+                row_num+= 1
+                fh.write('\n')
+
     print("File written to", j_tin['output-file'])
 
 
