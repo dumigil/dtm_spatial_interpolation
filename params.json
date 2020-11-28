@@ -1,18 +1,18 @@
 {
-  "input-file": "swiss_samples.xyz",
+  "input-file": "samples.xyz",
   "nn": {
     "output-file": "nn.asc",
-    "cellsize": 1000
+    "cellsize": 1.0
   },
   "idw": {
     "output-file": "idw.asc",
-    "cellsize": 1000,
-    "radius": 15000,
+    "cellsize": 1.0,
+    "radius": 15,
     "power": 2
   },
   "tin": {
     "output-file": "tin.asc",
-    "cellsize": 100
+    "cellsize": 1
   },
   "kriging": {
     "output-file": "kriging.asc",

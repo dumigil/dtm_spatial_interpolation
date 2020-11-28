@@ -70,6 +70,4 @@ def main():
                 col_num = 0
                 row_num+= 1
                 fh.write('\n')
-
-if __name__ == '__main__':
-    main()
+3

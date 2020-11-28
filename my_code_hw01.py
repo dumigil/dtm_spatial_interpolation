@@ -14,10 +14,8 @@ import startin
 import copy
 #-----
 def xy_distance(point1, point2):
-        dx = point1[0] - point2[0]
-        dy = point1[1] - point2[1]
-        distance = math.sqrt(dx **2 + dy **2)
-        return distance
+	return math.sqrt((point2[0]-point1[0])*(point2[0]-point1[0])+(point2[1]-point1[1])*(point2[1]-point1[1]))
+
 
 
 def nn_interpolation(list_pts_3d, j_nn):
@@ -293,6 +291,7 @@ def kriging_interpolation(list_pts_3d, j_kriging):
         returns the value of the area
  
     """  
+    
     
     
     print("File written to", j_kriging['output-file'])
