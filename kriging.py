@@ -7,6 +7,7 @@ import random
 import json 
 import time
 import copy 
+import startin
 
 
 numpy.set_printoptions(threshold=sys.maxsize)
@@ -27,11 +28,27 @@ def main():
             p = list(map(float, line)) #-- convert each str to a float
             assert(len(p) == 3)
             list_pts_3d.append(p)
+
+    clean_points_list = []
+    for point1 in list_pts_3d:
+	    repeated = False
+	    for point2 in clean_points_list:
+		    if point1[0] == point2[0] and point1[1] == point2[1]:
+			    repeated = True
+	    if repeated == False:
+		    clean_points_list.append(point1)
+	    else:
+		    print("Repeated point: " + str(point1[0]) + " " + str(point1[1]))
+    
+    list_pts = (clean_points_list)
+    
     gridsize= int(jparams['kriging']['cellsize'])
     radius = jparams['kriging']['radius']
     var_range = 260
     var_nugget = 18
     var_sill = 1300
+
+    
 
     def distance(point1, point2):
 	    return math.sqrt((point2[0]-point1[0])*(point2[0]-point1[0])+(point2[1]-point1[1])*(point2[1]-point1[1]))
@@ -46,7 +63,7 @@ def main():
 
     
     #copy 3d list before splitting it
-    list_pts = copy.deepcopy(list_pts_3d)
+    #list_pts = copy.deepcopy(list_pts_3d)
     x = []
     y = []
     z = []
@@ -61,8 +78,7 @@ def main():
         pt.pop(2)
     #storing xy vals in kdtree
     kd = scipy.spatial.KDTree(list_pts)
-    convex_hull = scipy.spatial.Delaunay(list_pts)
-    
+    convex_hull = scipy.spatial.Delaunay(clean_points_list)
     #determining grid size based on 
     ncols = math.ceil((max(x)-min(x))/gridsize)
     nrows = math.ceil((max(y)-min(y))/gridsize)
@@ -77,6 +93,8 @@ def main():
         else:
             radius_points = kd.query_ball_point(i, radius)
             sample_points = []
+            query_distances = []
+            z_vals = []
             for points in radius_points:
                 pointe = [x[points],y[points]]
                 sample_points.append(pointe)
@@ -87,8 +105,14 @@ def main():
                     if distance_matrix[ii][jj] != 0:
                         distance_matrix[ii][jj] = variogram(distance_matrix[ii][jj])
             c = numpy.matrix(distance_matrix)
-
-                        
+            for points in radius_points:
+                dist = distance(i, [x[points],y[points]])
+                query_distances.append(dist)
+                z_vals.append(z[points])
+            c_trans = numpy.linalg.inv(c)
+            weight = numpy.dot(c_trans, query_distances)
+            z_new = numpy.dot(weight, z_vals)
+            i.append(z_new)                        
 
                     
                     
@@ -98,7 +122,7 @@ def main():
 
 
 
-"""    with open(j_idw['output-file'], 'w') as fh:
+    with open(j_idw['output-file'], 'w') as fh:
         fh.writelines('NCOLS {}\n'.format(ncols))
         fh.writelines('NROWS {}\n'.format(nrows))
         fh.writelines('XLLCENTER {}\n'.format(min(x)))
@@ -111,7 +135,7 @@ def main():
             if col_num  == ncols:
                 col_num = 0
                 row_num+= 1
-                fh.write('\n')"""
+                fh.write('\n')
 
 
 if __name__ == '__main__':
