@@ -188,5 +188,6 @@ dmypy.json
 *.asc
 *.xyz
 test_shit.py
-
+*.csv
+*.txt
 
