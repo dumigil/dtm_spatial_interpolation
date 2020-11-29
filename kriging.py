@@ -51,9 +51,14 @@ def main():
     
 
     def distance(point1, point2):
-	    return math.sqrt((point2[0]-point1[0])*(point2[0]-point1[0])+(point2[1]-point1[1])*(point2[1]-point1[1]))
+	    return math.sqrt(((point2[0]-point1[0])*(point2[0]-point1[0]))+((point2[1]-point1[1])*(point2[1]-point1[1])))
 
     def variogram(h):
+        """Returns value of theoretical variogram function
+        Input: h 
+        Output y(h)
+        
+        """
         r = var_range
         n = var_nugget
         s = var_sill
@@ -61,7 +66,6 @@ def main():
         return h_theor
     
 
-    
     #copy 3d list before splitting it
     #list_pts = copy.deepcopy(list_pts_3d)
     x = []
@@ -69,10 +73,11 @@ def main():
     z = []
 
     #splitting list
-    for point in list_pts_3d:
+    for point in list_pts:
         x.append(point[0])
         y.append(point[1])
         z.append(point[2])
+
     #removing z values
     for pt in list_pts:
         pt.pop(2)
@@ -95,23 +100,50 @@ def main():
             sample_points = []
             query_distances = []
             z_vals = []
-            for points in radius_points:
-                pointe = [x[points],y[points]]
+            for pints in radius_points:
+                pointe = [x[pints],y[pints]]
                 sample_points.append(pointe)
+            #print(sample_points)
             distance_matrix  = (scipy.spatial.distance_matrix(sample_points, sample_points))
-            
             for ii in range(len(distance_matrix)):
-                for jj in range((ii)):
+                for jj in range(len((distance_matrix[ii]))):
                     if distance_matrix[ii][jj] != 0:
                         distance_matrix[ii][jj] = variogram(distance_matrix[ii][jj])
+                    else:
+                        distance_matrix[ii][jj] = 0
+
+            
+            
+            
+            
             c = numpy.matrix(distance_matrix)
+            print(c)
+            lagrange_col = []
+            lagrange_row = []
+            for n in range(len(sample_points)):
+                lagrange_col.append(1)
+            c_new = numpy.hstack((c, numpy.atleast_2d(lagrange_col).T))
+            for m in range(len(sample_points)+1):
+                    lagrange_row.append(1)
+            lagrange_row[-1] = 0
+            c_newer = numpy.append(c_new, [lagrange_row], axis=0)
             for points in radius_points:
                 dist = distance(i, [x[points],y[points]])
-                query_distances.append(dist)
+                query_distances.append(variogram(dist))
                 z_vals.append(z[points])
-            c_trans = numpy.linalg.inv(c)
-            weight = numpy.dot(c_trans, query_distances)
-            z_new = numpy.dot(weight, z_vals)
+            query_distances.append(1)
+            #print(query_distances)
+            try:
+                c_inv = numpy.linalg.inv(c_newer)
+                weight = numpy.matmul(c_inv, query_distances)
+                weight = numpy.delete(weight, [-1])
+                z_new = numpy.dot(weight, z_vals)
+            except numpy.linalg.LinAlgError as err:
+                if 'Singular matrix' in str(err):
+                    i.append(-9999)
+                else:
+                    raise
+
             i.append(z_new)                        
 
                     
@@ -122,15 +154,15 @@ def main():
 
 
 
-    with open(j_idw['output-file'], 'w') as fh:
+    with open('krig_test.asc', 'w') as fh:
         fh.writelines('NCOLS {}\n'.format(ncols))
         fh.writelines('NROWS {}\n'.format(nrows))
         fh.writelines('XLLCENTER {}\n'.format(min(x)))
         fh.writelines('YLLCENTER {}\n'.format(min(y)))
-        fh.writelines('CELLSIZE {}\n'.format(j_idw['cellsize']))
+        fh.writelines('CELLSIZE {}\n'.format(jparams['kriging']['cellsize']))
         fh.writelines('NODATA_VALUE {}\n'.format(-9999))
         for i in coordinates:
-            fh.write(str(i[-1])+' ')
+            fh.write(str(i[-1]).lstrip('[[').rstrip(']]')+' ')
             col_num += 1
             if col_num  == ncols:
                 col_num = 0
